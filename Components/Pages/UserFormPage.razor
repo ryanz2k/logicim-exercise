@@ -1,0 +1,71 @@
+@page "/"
+@using UserFormApp.Models
+@using UserFormApp.Services
+@inject IEmailValidationService EmailValidator
+
+<PageTitle>User Form</PageTitle>
+
+<div class="container py-4">
+    <h3 class="mb-4">User Form</h3>
+
+    <div class="row">
+        <div class="col-md-6">
+            <UserForm Model="userModel"
+                      SubmitButtonText="@(isEditMode ? "Update" : "Submit")"
+                      OnSubmit="HandleSubmit" />
+        </div>
+    </div>
+
+    @if (submittedUser is not null)
+    {
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Data Entry</strong>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary me-2" @onclick="EditUser">Edit</button>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ClearData">Clear</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <p><strong>Name:</strong> @submittedUser.Name</p>
+                <p><strong>Address:</strong> @(string.IsNullOrWhiteSpace(submittedUser.Address) ? "—" : submittedUser.Address)</p>
+                <p><strong>Age:</strong> @submittedUser.Age</p>
+                <p><strong>Email:</strong> @submittedUser.Email</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private UserModel userModel = new();
+    private UserModel? submittedUser;
+    private bool isEditMode;
+
+    private async Task HandleSubmit(UserModel user)
+    {
+        await Task.Delay(1000);
+
+        if (!isEditMode)
+        {
+            EmailValidator.RegisterEmail(user.Email);
+        }
+
+        submittedUser = user;
+        isEditMode = false;
+        userModel = new UserModel();
+    }
+
+    private void EditUser()
+    {
+        if (submittedUser is null) return;
+        userModel = submittedUser.Clone();
+        isEditMode = true;
+    }
+
+    private void ClearData()
+    {
+        userModel = new UserModel();
+        submittedUser = null;
+        isEditMode = false;
+    }
+}

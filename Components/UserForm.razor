@@ -1,0 +1,139 @@
+@using UserFormApp.Models
+@using UserFormApp.Services
+@inject IEmailValidationService EmailValidator
+
+<div class="user-form-container">
+    <EditForm EditContext="editContext" OnValidSubmit="HandleValidSubmit" FormName="UserForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger mb-3" />
+
+        <div class="mb-3">
+            <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+            <InputText id="name" class="form-control" @bind-Value="FormModel.Name" />
+            <ValidationMessage For="@(() => FormModel.Name)" />
+        </div>
+
+        <div class="mb-3">
+            <label for="address" class="form-label">Address</label>
+            <InputText id="address" class="form-control" @bind-Value="FormModel.Address" />
+            <ValidationMessage For="@(() => FormModel.Address)" />
+        </div>
+
+        <div class="mb-3">
+            <label for="age" class="form-label">Age <span class="text-danger">*</span></label>
+            <InputNumber id="age" class="form-control" @bind-Value="FormModel.Age" />
+            <ValidationMessage For="@(() => FormModel.Age)" />
+        </div>
+
+        <div class="mb-3">
+            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+            <input id="email" type="email" class="form-control"
+                   value="@FormModel.Email"
+                   @onchange="HandleEmailChanged" />
+            <ValidationMessage For="@(() => FormModel.Email)" />
+            @if (!string.IsNullOrEmpty(emailValidationMessage))
+            {
+                <div class="text-danger mt-1">@emailValidationMessage</div>
+            }
+            @if (isCheckingEmail)
+            {
+                <small class="text-muted">Checking email availability...</small>
+            }
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                @if (isSubmitting)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <span>Submitting...</span>
+                }
+                else
+                {
+                    @SubmitButtonText
+                }
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter]
+    public UserModel Model { get; set; } = new();
+
+    [Parameter]
+    public string SubmitButtonText { get; set; } = "Submit";
+
+    [Parameter]
+    public EventCallback<UserModel> OnSubmit { get; set; }
+
+    private UserModel FormModel { get; set; } = new();
+    private EditContext editContext = default!;
+    private bool isSubmitting;
+    private bool isCheckingEmail;
+    private string emailValidationMessage = string.Empty;
+    private bool isEmailUnique = true;
+
+    protected override void OnParametersSet()
+    {
+        FormModel = Model.Clone();
+        editContext = new EditContext(FormModel);
+    }
+
+    private async Task HandleEmailChanged(ChangeEventArgs e)
+    {
+        FormModel.Email = e.Value?.ToString()?.Trim() ?? string.Empty;
+        editContext.NotifyFieldChanged(editContext.Field(nameof(FormModel.Email)));
+
+        emailValidationMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(FormModel.Email))
+            return;
+
+        var emailAttr = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
+        if (!emailAttr.IsValid(FormModel.Email))
+            return;
+
+        if (string.Equals(FormModel.Email, Model.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            isEmailUnique = true;
+            return;
+        }
+
+        isCheckingEmail = true;
+        StateHasChanged();
+
+        isEmailUnique = await EmailValidator.IsEmailUniqueAsync(FormModel.Email);
+
+        if (!isEmailUnique)
+        {
+            emailValidationMessage = "This email address is already in use.";
+        }
+
+        isCheckingEmail = false;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (isSubmitting)
+            return;
+
+        if (!isEmailUnique)
+        {
+            emailValidationMessage = "This email address is already in use.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            FormModel.Email = FormModel.Email?.Trim().ToLowerInvariant() ?? string.Empty;
+            await OnSubmit.InvokeAsync(FormModel);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
