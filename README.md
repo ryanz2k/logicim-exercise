@@ -1,7 +1,3 @@
-# UserFormApp
-
-A Blazor Web App with a reusable form component for collecting user information.
-
 ## Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
@@ -9,6 +5,6 @@ A Blazor Web App with a reusable form component for collecting user information.
 ## Build and Run
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/ryanz2k/logicim-exercise.git
 dotnet run
 ```
